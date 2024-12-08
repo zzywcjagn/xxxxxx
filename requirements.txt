@@ -3,3 +3,4 @@ PyExecJS
 requests
 pycryptodome
 uvicorn
+fastapi
