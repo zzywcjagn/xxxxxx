@@ -1,17 +1,10 @@
 import os
-import ssl
 import json
 import execjs
-import asyncio
 import uvicorn
 import json
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 import execjs
-import requests
-from http import cookiejar
-from Crypto.Cipher import DES3
-
-from Crypto.Util.Padding import pad, unpad
 import httpx
 httpx._config.DEFAULT_CIPHERS += ":ALL:@SECLEVEL=1"
 diffValue = 2
@@ -23,59 +16,18 @@ else:
     fileContent = ''
 
 
-class BlockAll(cookiejar.CookiePolicy):
-    return_ok = set_ok = domain_return_ok = path_return_ok = lambda self, * \
-        args, **kwargs: False
-    netscape = True
-    rfc2965 = hide_cookie2 = False
-
-
 def printn(m):
     print(f'\n{m}')
 
 
-context = ssl.create_default_context()
-context.set_ciphers('DEFAULT@SECLEVEL=1')  # 低安全级别0/1
-context.check_hostname = False  # 禁用主机
-context.verify_mode = ssl.CERT_NONE  # 禁用证书
-
-
-class DESAdapter(requests.adapters.HTTPAdapter):
-    def init_poolmanager(self, *args, **kwargs):
-        kwargs['ssl_context'] = context
-        return super().init_poolmanager(*args, **kwargs)
-
-
-requests.DEFAULT_RETRIES = 0
-requests.packages.urllib3.disable_warnings()
-ss = requests.session()
-ss.headers = {"User-Agent": "Mozilla/5.0 (Linux; Android 13; 22081212C Build/TKQ1.220829.002) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.5112.97 Mobile Safari/537.36",
-              "Referer": "https://wapact.189.cn:9001/JinDouMall/JinDouMall_independentDetails.html"}
-ss.mount('https://', DESAdapter())
-ss.cookies.set_policy(BlockAll())
-runTime = 0
-sleepTime = 1
-key = b'1234567`90koiuyhgtfrdews'
-iv = 8 * b'\0'
-
-
-def encrypt(text):
-    cipher = DES3.new(key, DES3.MODE_CBC, iv)
-    ciphertext = cipher.encrypt(pad(text.encode(), DES3.block_size))
-    return ciphertext.hex()
-
-
-def decrypt(text):
-    ciphertext = bytes.fromhex(text)
-    cipher = DES3.new(key, DES3.MODE_CBC, iv)
-    plaintext = unpad(cipher.decrypt(ciphertext), DES3.block_size)
-    return plaintext.decode()
-
-
-def initCookie(getUrl='https://wapact.189.cn:9001/gateway/standQuery/detailNew/exchange'):
+def initCookie(resRe=''):
     global js_code_ym, fileContent
-    cookie = ''
-    response = httpx.post(getUrl)
+    if resRe:
+        getUrl = 'https://wapact.189.cn:9001/gateway/standQuery/detailNew/exchange'
+        cookie = ''
+        response = httpx.post(getUrl)
+    else:
+        response = resRe
     content = response.text.split(' content="')[2].split('" r=')[0]
     code1 = response.text.split('$_ts=window')[1].split(
         '</script><script type="text/javascript"')[0]
@@ -243,16 +195,15 @@ function main() {
 }'''
 
 
-async def main(t):
-    global runTime, js_codeRead
+async def main(response):
 
-    init_result = initCookie()
+    init_result = initCookie(response)
     if init_result:
         cookie = init_result['cookie']
         execjsRun = init_result['execjsRun']
     else:
         print("初始化 cookies 失败")
-        return
+        return {}
 
     runcookie = {
         'cookie': cookie,
@@ -269,9 +220,11 @@ async def main(t):
 app = FastAPI()
 
 
-@app.get("/get_cookies")
-async def get_cookies():
-    result = await main(0)
+@app.post("/get_cookies")
+async def get_cookies(request: Request):
+    postdata = await request.json()
+
+    result = await main(postdata['response'])
     return json.loads(result)
 
 if __name__ == "__main__":
