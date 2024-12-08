@@ -1,0 +1,5 @@
+httpx==0.16.1
+PyExecJS
+requests
+pycryptodome
+uvicorn
