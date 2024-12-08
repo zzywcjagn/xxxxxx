@@ -235,4 +235,4 @@ async def get_cookies(request: Request):
 
 if __name__ == "__main__":
 
-    uvicorn.run(app, host="0.0.0.0", port=1257)
+    uvicorn.run(app, host="0.0.0.0", port=1257,log_level="error")
