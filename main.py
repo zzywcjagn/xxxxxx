@@ -20,14 +20,18 @@ def printn(m):
     print(f'\n{m}')
 
 
-def initCookie(resRe=''):
+def initCookie(resRe='', url=''):
     global js_code_ym, fileContent
-    if resRe:
+    cookie = ''
+    getUrl = ''
+    if resRe and url:
+        getUrl = url
+        response = resRe
+    else:
         getUrl = 'https://wapact.189.cn:9001/gateway/standQuery/detailNew/exchange'
         cookie = ''
         response = httpx.post(getUrl)
-    else:
-        response = resRe
+
     content = response.text.split(' content="')[2].split('" r=')[0]
     code1 = response.text.split('$_ts=window')[1].split(
         '</script><script type="text/javascript"')[0]
@@ -195,9 +199,9 @@ function main() {
 }'''
 
 
-async def main(response):
+async def main(object):
 
-    init_result = initCookie(response)
+    init_result = initCookie(object['response'], object['url'])
     if init_result:
         cookie = init_result['cookie']
         execjsRun = init_result['execjsRun']
@@ -223,8 +227,10 @@ app = FastAPI()
 @app.post("/get_cookies")
 async def get_cookies(request: Request):
     postdata = await request.json()
-
-    result = await main(postdata['response'])
+    obj = {}
+    obj['url'] = postdata['url']
+    obj['response'] = postdata['response']
+    result = await main(obj)
     return json.loads(result)
 
 if __name__ == "__main__":
