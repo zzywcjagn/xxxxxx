@@ -28,7 +28,7 @@ def initCookie(resRe='', url=''):
         getUrl = url
         response = resRe
     else:
-        getUrl = 'https://wapact.189.cn:9001/gateway/standQuery/detailNew/exchange'
+        getUrl = 'https://wapside.189.cn:9001/jt-sign/ssoHomLogin'
         cookie = ''
         response = httpx.post(getUrl)
 
