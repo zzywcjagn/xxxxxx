@@ -225,7 +225,7 @@ def refresh_every_three_minutes():
     while True:
         print("Refreshing...")
         httpx.get("http://127.0.0.1:8000/init")
-        time.sleep(180)  # Sleep for 180 seconds (3 minutes)
+        time.sleep(1200)  # Sleep for 180 seconds (3 minutes)
 
 def start_refresh_process():
     refresh_thread = threading.Thread(target=refresh_every_three_minutes)
