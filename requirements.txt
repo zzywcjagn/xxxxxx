@@ -1,5 +1,6 @@
 httpx==0.16.1
 PyExecJS
+threading
 requests
 pycryptodome
 uvicorn
