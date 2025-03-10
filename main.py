@@ -1,11 +1,22 @@
 import os
-import json
-import execjs
+import threading
+import time
 import uvicorn
-import json
-from fastapi import FastAPI, Request
-import execjs
 import httpx
+import fastapi
+import subprocess
+# 重写 subprocess.Popen 类
+class MySubprocessPopen(subprocess.Popen):
+    def __init__(self, *args, **kwargs):
+        # 在调用父类（即 subprocess.Popen）的构造方法时，将 encoding 参数直接置为 UTF-8 编码格式
+        super().__init__(*args, encoding='UTF-8', **kwargs)  # Ensure encoding is passed correctly
+
+subprocess.Popen = MySubprocessPopen
+os.environ["EXECJS_RUNTIME"] = "Node"
+
+import execjs
+
+
 httpx._config.DEFAULT_CIPHERS += ":ALL:@SECLEVEL=1"
 diffValue = 2
 filename = 'Cache.js'
@@ -14,6 +25,7 @@ if os.path.exists(filename):
         fileContent = file.read()
 else:
     fileContent = ''
+
 
 
 def printn(m):
@@ -62,6 +74,8 @@ def initCookie(resRe='', url=''):
     }
 
 
+
+
 def RefererCookie(runJs):
     try:
         execjsRun = execjs.compile(runJs)
@@ -101,7 +115,6 @@ i = {length: 0}
 base = {length: 0}
 div = {
     getElementsByTagName: function (res) {
-        console.log('div中的getElementsByTagName：', res)
         if (res === 'i') {
             return i
         }
@@ -118,56 +131,48 @@ meta = [
     {
         content: content,
         getAttribute: function (res) {
-            console.log('meta中的getAttribute：', res)
             if (res === 'r') {
                 return 'm'
             }
         },
         parentNode: {
             removeChild: function (res) {
-                console.log('meta中的removeChild：', res)
-                
+
               return content
             }
         },
-        
+
     }
 ]
 form = '<form></form>'
 
 window.addEventListener= function (res) {
-        console.log('window中的addEventListener:', res)
-        
+
     }
-    
+
 document = {
     createElement: function (res) {
-        console.log('document中的createElement：', res)
-        
+
        if (res === 'div') {
             return div
         } else if (res === 'form') {
             return form
         }
         else{return res}
-            
-        
+
+
 
 
     },
     addEventListener: function (res) {
-        console.log('document中的addEventListener:', res)
-        
+
     },
     appendChild: function (res) {
-        console.log('document中的appendChild：', res)
         return res
     },
     removeChild: function (res) {
-        console.log('document中的removeChild：', res)
     },
     getElementsByTagName: function (res) {
-        console.log('document中的getElementsByTagName：', res)
         if (res === 'script') {
             return script
         }
@@ -179,7 +184,6 @@ document = {
         }
     },
     getElementById: function (res) {
-        console.log('document中的getElementById：', res)
         if (res === 'root-hammerhead-shadow-ui') {
             return null
         }
@@ -198,10 +202,9 @@ function main() {
     return cookie
 }'''
 
+init_result=''
 
-async def main(object):
-
-    init_result = initCookie(object['response'], object['url'])
+def main():
     if init_result:
         cookie = init_result['cookie']
         execjsRun = init_result['execjsRun']
@@ -215,24 +218,35 @@ async def main(object):
     }
 
     # 添加输出 cookies 的代码
-    cookies = {
-        'yiUIIlbdQT3fO': runcookie['cookie'],
-        'yiUIIlbdQT3fP': runcookie['execjsRun'].call('main').split('=')[1]
-    }
-    return json.dumps(cookies)
-    # print(json.dumps(cookies))  # 确保输出是 JSON 格式的
-app = FastAPI()
+    cookies = f"yiUIIlbdQT3fO={runcookie['cookie']}; yiUIIlbdQT3fP={runcookie['execjsRun'].call('main').split('=')[1]}"
+    return cookies
+
+def refresh_every_three_minutes():
+    while True:
+        print("Refreshing...")
+        httpx.get("http://127.0.0.1:8000/init")
+        time.sleep(180)  # Sleep for 180 seconds (3 minutes)
+
+def start_refresh_process():
+    refresh_thread = threading.Thread(target=refresh_every_three_minutes)
+    refresh_thread.daemon = True
+    refresh_thread.start()
 
 
-@app.post("/get_cookies")
-async def get_cookies(request: Request):
-    postdata = await request.json()
-    obj = {}
-    obj['url'] = postdata['url']
-    obj['response'] = postdata['response']
-    result = await main(obj)
-    return json.loads(result)
+
+app = fastapi.FastAPI()
+
+@app.get("/init")
+async  def init():
+    global init_result
+    init_result = initCookie()
+    return 'ok'
+
+@app.get("/get_cookie")
+async def read_root():
+    result =main()
+    return result
 
 if __name__ == "__main__":
-
-    uvicorn.run(app, host="0.0.0.0", port=1257,log_level="error")
+    start_refresh_process()
+    uvicorn.run("ruishu:app")
