@@ -249,4 +249,4 @@ async def read_root():
 
 if __name__ == "__main__":
     start_refresh_process()
-    uvicorn.run("ruishu:app")
+    uvicorn.run("main:app")
